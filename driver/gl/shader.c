@@ -3,11 +3,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "../../common/error.h"
+#include "common.h"
 
-Shader *shaderNew(const char *vertexShaderSource,
-                  const char *fragmentShaderSource,
-                  const char *geometryShaderSource) {
+Shader *gbShaderNew(const char *vertexShaderSource,
+                    const char *fragmentShaderSource,
+                    const char *geometryShaderSource) {
   Shader *s = malloc(sizeof(Shader));
   s->id = glCreateProgram();
 
@@ -61,16 +61,16 @@ Shader *shaderNew(const char *vertexShaderSource,
   return s;
 }
 
-void shaderFree(Shader *s) {
-  glDeleteProgram(s->id);
-  free(s);
+void gbShaderFree(Shader *shader) {
+  glDeleteProgram(shader->id);
+  free(shader);
 }
 
-void shaderUse(Shader *s) { glUseProgram(s->id); }
+void gbShaderUse(Shader *shader) { glUseProgram(shader->id); }
 
-void shaderSetInt(Shader *shader, const char *name, int value) {
+void gbShaderSetInt(Shader *shader, const char *name, int value) {
   glUniform1i(glGetUniformLocation(shader->id, name), value);
 }
-void shaderSetFloat(Shader *shader, const char *name, float value) {
+void gbShaderSetFloat(Shader *shader, const char *name, float value) {
   glUniform1f(glGetUniformLocation(shader->id, name), value);
 }

@@ -3,6 +3,7 @@
     "cstdlib": "c",
     "locale": "c",
     "ostream": "c",
-    "new": "c"
+    "new": "c",
+    "ios": "c"
   }
 }

@@ -6,12 +6,12 @@ typedef struct {
   GLuint id;
 } Shader;
 
-Shader *shaderNew(const char *vertexShaderSource,
-                  const char *fragmentShaderSource,
-                  const char *geometryShaderSource);
-void shaderFree(Shader *shader);
+Shader *gbShaderNew(const char *vertexShaderSource,
+                    const char *fragmentShaderSource,
+                    const char *geometryShaderSource);
+void gbShaderFree(Shader *shader);
 
-void shaderUse(Shader *shader);
+void gbShaderUse(Shader *shader);
 
-void shaderSetInt(Shader *shader, const char *name, int value);
-void shaderSetFloat(Shader *shader, const char *name, float value);
+void gbShaderSetInt(Shader *shader, const char *name, int value);
+void gbShaderSetFloat(Shader *shader, const char *name, float value);

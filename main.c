@@ -5,39 +5,54 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 
-#include "common/common.h"
+#include "common.h"
 #include "driver/gl/impl.h"
 #include "driver/gl/shader.h"
+#include "driver/sdl/window.h"
 #include "emu/bits.h"
 
 #define WIDTH 800
 #define HEIGHT 600
 
-void resize(int width, int height) { glViewport(0, 0, width, height); }
+#define CHANNELS 4
+
+#define IMAGE_SIZE (WIDTH) * (HEIGHT) * (CHANNELS)
+
+#define FPS 59.727500569606
+
+#define FEATURE_SIZE 24
+
+void updatePixels(GLubyte *dst, int size) {
+
+  static char v = 0;
+  v = (v + 1) % 256;
+
+  if (!dst)
+    return;
+
+  char *ptr = (char *)dst;
+
+  // copy 4 bytes at once
+  for (int i = 0; i < HEIGHT; ++i) {
+    for (int j = 0; j < WIDTH; ++j) {
+      *ptr = v;
+      *(ptr + 1) = v;
+      *(ptr + 2) = v;
+      *(ptr + 3) = v;
+      ptr += 4;
+    }
+  }
+}
 
 int main(int a, char *b[]) {
-  if (SDL_Init(SDL_INIT_VIDEO) != 0) {
-    printf("SDL_Init error: %s\n", SDL_GetError());
+  Window *window = gbWindowNew(WIDTH, HEIGHT);
+  if (window == NULL) {
+    printf("gbWindowNew error: %s\n", gbGetError());
     return 1;
   }
 
-  SDL_Window *win = SDL_CreateWindow(
-      "GB", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, WIDTH, HEIGHT,
-      SDL_WINDOW_SHOWN | SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
-  if (win == NULL) {
-    printf("SDL_CreateWindow error: %s\n", SDL_GetError());
-    return 1;
-  }
-
-  SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
-  SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
-  SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
-
-  SDL_GLContext context = SDL_GL_CreateContext(win);
-  if (context == NULL) {
-    printf("SDL_GL_CreateContext error: %s\n", SDL_GetError());
-    return 1;
-  }
+  GLubyte *image = malloc(IMAGE_SIZE);
+  memset(image, 255, IMAGE_SIZE);
 
   printf("=== GB by @qu4k ===\n");
 
@@ -51,8 +66,7 @@ int main(int a, char *b[]) {
 
   printf("=== =========== ===\n");
 
-  resize(WIDTH, HEIGHT);
-
+  glViewport(0, 0, WIDTH, HEIGHT);
 
   glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
 
@@ -84,25 +98,32 @@ int main(int a, char *b[]) {
       "  FragColor = texture(texture1, TexCoord);\n"
       "}\n";
 
-  Shader *s = shaderNew(vertexShaderSource, fragmentShaderSource, NULL);
+  Shader *s = gbShaderNew(vertexShaderSource, fragmentShaderSource, NULL);
   if (s == NULL) {
-    printf("shaderNew error: %s\n", gbGetError());
+    printf("gbShaderNew error: %s\n", gbGetError());
     return 1;
   }
 
   float vertices[] = {
       // positions  // colors         // texture coords
-      1.0f,  1.0f,  0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f, // top right
-      1.0f,  -1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f, // bottom right
-      -1.0f, -1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, // bottom left
-      -1.0f, 1.0f,  0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f  // top left
+      0.9f,  0.9f,  0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f, // top right
+      0.9f,  -0.9f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f, // bottom right
+      -0.9f, -0.9f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, // bottom left
+      -0.9f, 0.9f,  0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f  // top left
   };
   unsigned int indices[] = {0, 1, 3, 1, 2, 3};
 
-  GLuint VAO, VBO, EBO;
+  GLuint VAO, VBO, EBO, PBOs[2];
   glGenVertexArrays(1, &VAO);
   glGenBuffers(1, &VBO);
   glGenBuffers(1, &EBO);
+  glGenBuffers(2, PBOs);
+
+  glBindBuffer(GL_PIXEL_UNPACK_BUFFER, PBOs[0]);
+  glBufferData(GL_PIXEL_UNPACK_BUFFER, IMAGE_SIZE, 0, GL_STREAM_DRAW);
+  glBindBuffer(GL_PIXEL_UNPACK_BUFFER, PBOs[1]);
+  glBufferData(GL_PIXEL_UNPACK_BUFFER, IMAGE_SIZE, 0, GL_STREAM_DRAW);
+  glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
 
   glBindVertexArray(VAO);
 
@@ -138,20 +159,21 @@ int main(int a, char *b[]) {
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-  // load image, create texture and generate mipmaps
-  int width, height, nrChannels;
-  stbi_set_flip_vertically_on_load(true);
-  unsigned char *data =
-      stbi_load("brickwall.jpg", &width, &height, &nrChannels, 0);
-  if (data) {
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB,
-                 GL_UNSIGNED_BYTE, data);
-    glGenerateMipmap(GL_TEXTURE_2D);
-  } else {
-    printf("Error: failed to load texture\n");
-    return 1;
-  }
-  stbi_image_free(data);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, WIDTH, HEIGHT, 0, GL_BGRA,
+               GL_UNSIGNED_BYTE, image);
+  glGenerateMipmap(GL_TEXTURE_2D);
+
+  glBindTexture(GL_TEXTURE_2D, 0);
+
+  gbShaderSetInt(s, "texture1", 0);
+
+  static int index = 0;
+  int nextIndex = 0;
+
+  double tickInteval = 1000. / FPS; // frequency in Hz to period in ms
+  uint32_t lastUpdateTime = 0;
+  uint32_t deltaTime = 0;
+  uint32_t accumulator = 0;
 
   SDL_Event e;
   int quit = 0;
@@ -163,27 +185,63 @@ int main(int a, char *b[]) {
       if (e.type == SDL_WINDOWEVENT) {
         if (e.window.event == SDL_WINDOWEVENT_RESIZED ||
             e.window.event == SDL_WINDOWEVENT_SIZE_CHANGED) {
-          resize(e.window.data1, e.window.data2);
+          glViewport(0, 0, e.window.data1, e.window.data2);
         }
       }
     }
+
+    uint32_t currentTime = SDL_GetTicks();
+    deltaTime = currentTime - lastUpdateTime;
+    accumulator += deltaTime;
+
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, texture1);
+
+    //
+
+    while (accumulator >= tickInteval) {
+      index = (index + 1) % 2;
+      nextIndex = (index + 1) % 2;
+
+      glBindBuffer(GL_PIXEL_UNPACK_BUFFER, PBOs[index]);
+
+      glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, WIDTH, HEIGHT, GL_BGRA,
+                      GL_UNSIGNED_BYTE, 0);
+
+      glBindBuffer(GL_PIXEL_UNPACK_BUFFER, PBOs[nextIndex]);
+      glBufferData(GL_PIXEL_UNPACK_BUFFER, IMAGE_SIZE, 0, GL_STREAM_DRAW);
+      GLubyte *ptr =
+          (GLubyte *)glMapBuffer(GL_PIXEL_UNPACK_BUFFER, GL_WRITE_ONLY);
+
+      if (ptr) {
+        updatePixels(ptr, IMAGE_SIZE);
+        glUnmapBuffer(GL_PIXEL_UNPACK_BUFFER);
+      }
+
+      glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
+
+      accumulator -= tickInteval;
+    }
+
     glClear(GL_COLOR_BUFFER_BIT);
 
-    shaderUse(s);
+    gbShaderUse(s);
     glBindVertexArray(VAO);
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
     // Update screen
-    SDL_GL_SwapWindow(win);
+    SDL_GL_SwapWindow(window->raw);
+
+    lastUpdateTime = currentTime;
   }
 
   glDeleteVertexArrays(1, &VAO);
   glDeleteBuffers(1, &VBO);
   glDeleteBuffers(1, &EBO);
-  shaderFree(s);
+  glDeleteBuffers(2, PBOs);
 
-  SDL_GL_DeleteContext(context);
-  SDL_DestroyWindow(win);
+  gbShaderFree(s);
+  gbWindowFree(window);
   SDL_Quit();
 
   return 0;
