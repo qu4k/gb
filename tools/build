@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+
+source ./tools/env
+
+mkdir -p "$GB_BUILD_DIR"
+
+(cd -- "$GB_BUILD_DIR" && cmake -GNinja ..)
+(cd -- "$GB_BUILD_DIR" && ninja)

@@ -13,4 +13,4 @@ bool testBit(byte n, small pos);
 
 byte getVal(byte n, small pos);
 
-char* fmtByte(byte n);
+char *fmtByte(byte n);

@@ -4,17 +4,20 @@ project(gb)
 
 find_package(SDL2 REQUIRED)
 find_package(OpenGL REQUIRED)
-include_directories(${SDL2_INCLUDE_DIRS} ${OPENGL_INCLUDE_DIR})
 
 message(STATUS "Found SDL2: <<${SDL2_INCLUDE_DIRS}>>")
 message(STATUS "Found OpenGL: <<${OPENGL_INCLUDE_DIR}>>")
 
-file(GLOB_RECURSE SRCS emu/*.c)
-file(GLOB_RECURSE HDRS emu/*.h)
+file(GLOB_RECURSE EMU_SOURCES emu/*.c)
+file(GLOB_RECURSE EMU_HEADERS emu/*.h)
 
-message(STATUS "Found sources: <<${SRCS}>>")
-message(STATUS "Found headers: <<${HDRS}>>")
+file(GLOB_RECURSE DRIVER_SOURCES driver/*.c)
+file(GLOB_RECURSE DRIVER_HEADERS driver/*.h)
 
-include_directories(gb ${HDRS})
-add_executable(gb main.c ${SRCS})
+file(GLOB_RECURSE COMMON_SOURCES common/*.c)
+file(GLOB_RECURSE COMMON_HEADERS common/*.h)
+
+include_directories(${SDL2_INCLUDE_DIRS} ${OPENGL_INCLUDE_DIR} stb common driver emu)
+
+add_executable(gb main.c ${DRIVER_SOURCES} ${DRIVER_HEADERS} ${EMU_SOURCES} ${EMU_HEADERS} ${COMMON_SOURCES} ${COMMON_HEADERS})
 target_link_libraries(gb ${SDL2_LIBRARIES} ${OPENGL_LIBRARIES})

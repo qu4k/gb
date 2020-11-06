@@ -1,4 +1,8 @@
 {
-  "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
-  "C_Cpp.clang_format_fallbackStyle": "{ BasedOnStyle: Google, IndentWidth: 2 }"
+  "files.associations": {
+    "cstdlib": "c",
+    "locale": "c",
+    "ostream": "c",
+    "new": "c"
+  }
 }

@@ -16,7 +16,7 @@ bool testBit(byte n, small pos) { return ((n) & (1 << (pos))) > 0; }
 
 byte getVal(byte n, small pos) { return ((n >> pos) & 1); }
 
-char* fmtByte(byte n) {
+char *fmtByte(byte n) {
   static char b[9];
   b[0] = '\0';
 
