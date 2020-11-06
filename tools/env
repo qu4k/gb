@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+
+export GB_BUILD_DIR=build
+export GB_TARGET=gb

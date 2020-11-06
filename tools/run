@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+
+source ./tools/env
+bash ./tools/build || exit 1
+
+./"$GB_BUILD_DIR"/"$GB_TARGET"
