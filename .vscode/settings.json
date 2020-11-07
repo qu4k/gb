@@ -4,6 +4,11 @@
     "locale": "c",
     "ostream": "c",
     "new": "c",
-    "ios": "c"
+    "ios": "c",
+    "array": "c",
+    "iterator": "c",
+    "string": "c",
+    "string_view": "c",
+    "vector": "c"
   }
 }

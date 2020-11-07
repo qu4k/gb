@@ -1,0 +1,6 @@
+[submodule "vendor/cimgui"]
+	path = vendor/cimgui
+	url = https://github.com/cimgui/cimgui
+[submodule "vendor/gl3w"]
+	path = vendor/gl3w
+	url = https://github.com/skaslev/gl3w

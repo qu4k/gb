@@ -2,8 +2,9 @@
 
 #include <stdbool.h>
 
-#define byte unsigned char
-#define small byte
+typedef unsigned char byte;
+typedef unsigned short word;
+typedef byte small;
 
 byte setBit(byte n, small pos);
 

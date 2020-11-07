@@ -1,7 +1,7 @@
+#pragma once
+
 #ifdef GB_DRIVER_SDL
-#define GL_GLEXT_PROTOTYPES
-#include <SDL_opengl.h>
+#include <GL/gl3w.h> 
 #else
-#define GL_GLEXT_PROTOTYPES
-#include <SDL_opengl.h>
+#include <GL/gl3w.h> 
 #endif

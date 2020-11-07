@@ -1,15 +1,19 @@
+#include "driver/gl/impl.h"
+
 #define NO_STDIO_REDIRECT
 #include <SDL.h>
 #include <stdlib.h>
 
-#define STB_IMAGE_IMPLEMENTATION
-#include <stb_image.h>
+#define CIMGUI_DEFINE_ENUMS_AND_STRUCTS
+#include <cimgui.h>
+#include <cimgui_impl.h>
 
 #include "common.h"
-#include "driver/gl/impl.h"
 #include "driver/gl/shader.h"
-#include "driver/sdl/window.h"
-#include "emu/bits.h"
+#include "driver/sdl/driver.h"
+#include "emu/mem.h"
+
+#include "driver/imgui/memory_view.h"
 
 #define WIDTH 800
 #define HEIGHT 600
@@ -20,39 +24,22 @@
 
 #define FPS 59.727500569606
 
-#define FEATURE_SIZE 24
-
-void updatePixels(GLubyte *dst, int size) {
-
-  static char v = 0;
-  v = (v + 1) % 256;
-
-  if (!dst)
-    return;
-
-  char *ptr = (char *)dst;
-
-  // copy 4 bytes at once
-  for (int i = 0; i < HEIGHT; ++i) {
-    for (int j = 0; j < WIDTH; ++j) {
-      *ptr = v;
-      *(ptr + 1) = v;
-      *(ptr + 2) = v;
-      *(ptr + 3) = v;
-      ptr += 4;
-    }
-  }
-}
-
 int main(int a, char *b[]) {
-  Window *window = gbWindowNew(WIDTH, HEIGHT);
-  if (window == NULL) {
-    printf("gbWindowNew error: %s\n", gbGetError());
+  GBMemory *mem = gbMemNew();
+
+  GBMemoryEditor *mem_edit = meditMemoryEditorNew();
+
+  gbDriverInit();
+  GBDriver *driver = gbDriverNew(WIDTH, HEIGHT);
+  if (driver == NULL) {
+    printf("gbDriverNew error: %s\n", gbGetError());
     return 1;
   }
 
-  GLubyte *image = malloc(IMAGE_SIZE);
-  memset(image, 255, IMAGE_SIZE);
+  if (gl3wInit()) {
+    fprintf(stderr, "Failed to initialize OpenGL loader!\n");
+    return 1;
+  }
 
   printf("=== GB by @qu4k ===\n");
 
@@ -70,179 +57,98 @@ int main(int a, char *b[]) {
 
   glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
 
-  const char *vertexShaderSource =
-      "#version 330 core\n"
-      "layout (location = 0) in vec3 aPos;\n"
-      "layout (location = 1) in vec3 aColor;\n"
-      "layout (location = 2) in vec2 aTexCoord;\n"
-      "\n"
-      "out vec3 ourColor;\n"
-      "out vec2 TexCoord;\n"
-      "\n"
-      "void main() {\n"
-      "  gl_Position = vec4(aPos, 1.0);\n"
-      "  ourColor = aColor;\n"
-      "  TexCoord = vec2(aTexCoord.x, aTexCoord.y);\n"
-      "}\0";
+  igCreateContext(NULL);
+  ImGuiIO* ioptr = igGetIO();
+  ioptr->ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;       // Enable Keyboard Controls
 
-  const char *fragmentShaderSource =
-      "#version 330 core\n"
-      "out vec4 FragColor;\n"
-      "\n"
-      "in vec3 ourColor;\n"
-      "in vec2 TexCoord;\n"
-      "\n"
-      "uniform sampler2D texture1;\n"
-      "\n"
-      "void main() {\n"
-      "  FragColor = texture(texture1, TexCoord);\n"
-      "}\n";
+  ImGui_ImplSDL2_InitForOpenGL(driver->raw, driver->context);
+  ImGui_ImplOpenGL3_Init("#version 330");
 
-  Shader *s = gbShaderNew(vertexShaderSource, fragmentShaderSource, NULL);
-  if (s == NULL) {
-    printf("gbShaderNew error: %s\n", gbGetError());
-    return 1;
-  }
-
-  float vertices[] = {
-      // positions  // colors         // texture coords
-      0.9f,  0.9f,  0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f, // top right
-      0.9f,  -0.9f, 0.0f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f, // bottom right
-      -0.9f, -0.9f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, // bottom left
-      -0.9f, 0.9f,  0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f  // top left
-  };
-  unsigned int indices[] = {0, 1, 3, 1, 2, 3};
-
-  GLuint VAO, VBO, EBO, PBOs[2];
-  glGenVertexArrays(1, &VAO);
-  glGenBuffers(1, &VBO);
-  glGenBuffers(1, &EBO);
-  glGenBuffers(2, PBOs);
-
-  glBindBuffer(GL_PIXEL_UNPACK_BUFFER, PBOs[0]);
-  glBufferData(GL_PIXEL_UNPACK_BUFFER, IMAGE_SIZE, 0, GL_STREAM_DRAW);
-  glBindBuffer(GL_PIXEL_UNPACK_BUFFER, PBOs[1]);
-  glBufferData(GL_PIXEL_UNPACK_BUFFER, IMAGE_SIZE, 0, GL_STREAM_DRAW);
-  glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
-
-  glBindVertexArray(VAO);
-
-  glBindBuffer(GL_ARRAY_BUFFER, VBO);
-  glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-
-  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-  glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices,
-               GL_STATIC_DRAW);
-
-  // position attribute
-  glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void *)0);
-  glEnableVertexAttribArray(0);
-  // color attribute
-  glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float),
-                        (void *)(3 * sizeof(float)));
-  glEnableVertexAttribArray(1);
-  // texture coord attribute
-  glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float),
-                        (void *)(6 * sizeof(float)));
-  glEnableVertexAttribArray(2);
-
-  GLuint texture1;
-
-  glGenTextures(1, &texture1);
-  glBindTexture(GL_TEXTURE_2D, texture1);
-  // set the texture wrapping parameters
-  glTexParameteri(
-      GL_TEXTURE_2D, GL_TEXTURE_WRAP_S,
-      GL_REPEAT); // set texture wrapping to GL_REPEAT (default wrapping method)
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-  // set texture filtering parameters
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, WIDTH, HEIGHT, 0, GL_BGRA,
-               GL_UNSIGNED_BYTE, image);
-  glGenerateMipmap(GL_TEXTURE_2D);
-
-  glBindTexture(GL_TEXTURE_2D, 0);
-
-  gbShaderSetInt(s, "texture1", 0);
-
-  static int index = 0;
-  int nextIndex = 0;
+  igStyleColorsDark(NULL);
 
   double tickInteval = 1000. / FPS; // frequency in Hz to period in ms
   uint32_t lastUpdateTime = 0;
   uint32_t deltaTime = 0;
   uint32_t accumulator = 0;
 
-  SDL_Event e;
+  ImVec4 clearColor;
+  clearColor.x = 0.45f;
+  clearColor.y = 0.55f;
+  clearColor.z = 0.60f;
+  clearColor.w = 1.00f;
+
+  GBDriverEvent e;
   int quit = 0;
   while (!quit) {
-    while (SDL_PollEvent(&e) != 0) {
-      if (e.type == SDL_QUIT) {
+    while (gbDriverPollEvent(&e) != 0) {
+      if (e.type == GB_DRIVER_QUIT) {
         quit = 1;
       }
-      if (e.type == SDL_WINDOWEVENT) {
-        if (e.window.event == SDL_WINDOWEVENT_RESIZED ||
-            e.window.event == SDL_WINDOWEVENT_SIZE_CHANGED) {
-          glViewport(0, 0, e.window.data1, e.window.data2);
-        }
+      if (e.type == GB_DRIVER_RESIZE) {
+        glViewport(0, 0, e.width, e.height);
       }
     }
 
-    uint32_t currentTime = SDL_GetTicks();
+    uint32_t currentTime = gbDriverGetTicks();
     deltaTime = currentTime - lastUpdateTime;
     accumulator += deltaTime;
 
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, texture1);
-
-    //
-
     while (accumulator >= tickInteval) {
-      index = (index + 1) % 2;
-      nextIndex = (index + 1) % 2;
 
-      glBindBuffer(GL_PIXEL_UNPACK_BUFFER, PBOs[index]);
-
-      glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, WIDTH, HEIGHT, GL_BGRA,
-                      GL_UNSIGNED_BYTE, 0);
-
-      glBindBuffer(GL_PIXEL_UNPACK_BUFFER, PBOs[nextIndex]);
-      glBufferData(GL_PIXEL_UNPACK_BUFFER, IMAGE_SIZE, 0, GL_STREAM_DRAW);
-      GLubyte *ptr =
-          (GLubyte *)glMapBuffer(GL_PIXEL_UNPACK_BUFFER, GL_WRITE_ONLY);
-
-      if (ptr) {
-        updatePixels(ptr, IMAGE_SIZE);
-        glUnmapBuffer(GL_PIXEL_UNPACK_BUFFER);
-      }
-
-      glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
+      // update
 
       accumulator -= tickInteval;
     }
 
+    ImGui_ImplOpenGL3_NewFrame();
+    ImGui_ImplSDL2_NewFrame(driver->raw);
+    igNewFrame();
+
+    static float f = 0.0f;
+    static int counter = 0;
+
+    igBegin("Hello, world!", NULL, 0);
+    igText("This is some useful text");
+
+    igSliderFloat("Float", &f, 0.0f, 1.0f, "%.3f", 0);
+    igColorEdit3("clear color", (float *)&clearColor, 0);
+
+    ImVec2 buttonSize;
+    buttonSize.x = 0;
+    buttonSize.y = 0;
+    if (igButton("Button", buttonSize))
+      counter++;
+    igSameLine(0.0f, -1.0f);
+    igText("counter = %d", counter);
+
+    igText("Application average %.3f ms/frame (%.1f FPS)",
+           1000.0f / igGetIO()->Framerate, igGetIO()->Framerate);
+    igEnd();
+
+    meditDrawWindow(mem_edit, "Memory Editor", mem->rom, GB_MEM_ROM_SIZE, 0x0000);
+
+    igRender();
+
+    glClearColor(clearColor.x, clearColor.y, clearColor.z, clearColor.w);
     glClear(GL_COLOR_BUFFER_BIT);
 
-    gbShaderUse(s);
-    glBindVertexArray(VAO);
-    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+    ImGui_ImplOpenGL3_RenderDrawData(igGetDrawData());
 
     // Update screen
-    SDL_GL_SwapWindow(window->raw);
+    gbDriverDraw(driver);
 
     lastUpdateTime = currentTime;
   }
 
-  glDeleteVertexArrays(1, &VAO);
-  glDeleteBuffers(1, &VBO);
-  glDeleteBuffers(1, &EBO);
-  glDeleteBuffers(2, PBOs);
+  ImGui_ImplOpenGL3_Shutdown();
+  ImGui_ImplSDL2_Shutdown();
+  igDestroyContext(NULL);
 
-  gbShaderFree(s);
-  gbWindowFree(window);
-  SDL_Quit();
+  gbDriverFree(driver);
+
+  gbDriverQuit();
+
+  gbMemFree(mem);
 
   return 0;
 }
