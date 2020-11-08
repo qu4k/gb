@@ -3,6 +3,7 @@
 typedef enum {
   GB_DRIVER_QUIT,
   GB_DRIVER_RESIZE,
+  GB_DRIVER_NATIVE,
 } GBDriverEventType;
 
 typedef struct {

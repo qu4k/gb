@@ -6,10 +6,10 @@
 #include <stb_image.h>
 
 #include "common.h"
-#include "emu/mem.h"
 #include "driver/gl/impl.h"
 #include "driver/gl/shader.h"
 #include "driver/sdl/driver.h"
+#include "emu/mem.h"
 
 #define WIDTH 800
 #define HEIGHT 600
@@ -43,7 +43,7 @@ void updatePixels(GLubyte *dst, int size) {
 }
 
 int main(int a, char *b[]) {
-  GBMemory* mem = gbMemNew();
+  GBMemory *mem = gbMemNew();
   gbMemFree(mem);
 
   gbDriverInit();

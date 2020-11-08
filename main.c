@@ -31,7 +31,9 @@ int main(int a, char *b[]) {
 
   gbDriverInit();
   GBDriver *driver = gbDriverNew(WIDTH, HEIGHT);
-  if (driver == NULL) {
+  GBDriver *debugger = gbDriverNew(WIDTH, HEIGHT);
+
+  if (driver == NULL || debugger == NULL) {
     printf("gbDriverNew error: %s\n", gbGetError());
     return 1;
   }
@@ -58,11 +60,14 @@ int main(int a, char *b[]) {
   glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
 
   igCreateContext(NULL);
-  ImGuiIO* ioptr = igGetIO();
-  ioptr->ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;       // Enable Keyboard Controls
+  ImGuiIO *io = igGetIO();
+  io->ConfigFlags |=
+      ImGuiConfigFlags_NavEnableKeyboard; // Enable Keyboard Controls
+  io->IniFilename = NULL;
 
-  ImGui_ImplSDL2_InitForOpenGL(driver->raw, driver->context);
+  ImGui_ImplSDL2_InitForOpenGL(debugger->raw, debugger->context);
   ImGui_ImplOpenGL3_Init("#version 330");
+  gbDriverSetEventCallback(ImGui_ImplSDL2_ProcessEvent);
 
   igStyleColorsDark(NULL);
 
@@ -81,12 +86,10 @@ int main(int a, char *b[]) {
   int quit = 0;
   while (!quit) {
     while (gbDriverPollEvent(&e) != 0) {
-      if (e.type == GB_DRIVER_QUIT) {
-        quit = 1;
-      }
-      if (e.type == GB_DRIVER_RESIZE) {
+      if (e.type == GB_DRIVER_QUIT)
+        quit = true;
+      if (e.type == GB_DRIVER_RESIZE)
         glViewport(0, 0, e.width, e.height);
-      }
     }
 
     uint32_t currentTime = gbDriverGetTicks();
@@ -94,42 +97,38 @@ int main(int a, char *b[]) {
     accumulator += deltaTime;
 
     while (accumulator >= tickInteval) {
-
       // update
 
       accumulator -= tickInteval;
     }
 
     ImGui_ImplOpenGL3_NewFrame();
-    ImGui_ImplSDL2_NewFrame(driver->raw);
+    ImGui_ImplSDL2_NewFrame(debugger->raw);
     igNewFrame();
 
     static float f = 0.0f;
     static int counter = 0;
 
-    igBegin("Hello, world!", NULL, 0);
-    igText("This is some useful text");
+    igShowDemoWindow(1);
 
-    igSliderFloat("Float", &f, 0.0f, 1.0f, "%.3f", 0);
-    igColorEdit3("clear color", (float *)&clearColor, 0);
-
-    ImVec2 buttonSize;
-    buttonSize.x = 0;
-    buttonSize.y = 0;
-    if (igButton("Button", buttonSize))
-      counter++;
-    igSameLine(0.0f, -1.0f);
-    igText("counter = %d", counter);
-
-    igText("Application average %.3f ms/frame (%.1f FPS)",
-           1000.0f / igGetIO()->Framerate, igGetIO()->Framerate);
-    igEnd();
-
-    meditDrawWindow(mem_edit, "Memory Editor", mem->rom, GB_MEM_ROM_SIZE, 0x0000);
+    meditDrawWindow(mem_edit, "Memory Editor", mem->rom, GB_MEM_ROM_SIZE,
+                    0x0000);
 
     igRender();
 
+    SDL_GL_MakeCurrent(debugger->raw, debugger->context);
+
     glClearColor(clearColor.x, clearColor.y, clearColor.z, clearColor.w);
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    ImGui_ImplOpenGL3_RenderDrawData(igGetDrawData());
+
+    // Update screen
+    gbDriverDraw(debugger);
+
+    SDL_GL_MakeCurrent(driver->raw, driver->context);
+
+    glClearColor(1.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
 
     ImGui_ImplOpenGL3_RenderDrawData(igGetDrawData());

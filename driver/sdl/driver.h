@@ -1,7 +1,8 @@
 #pragma once
 
-#include <SDL.h>
+#include "common.h"
 #include "event.h"
+#include <SDL.h>
 
 typedef struct {
   SDL_Window *raw;
@@ -17,5 +18,7 @@ GBDriver *gbDriverNew(int width, int height);
 void gbDriverFree(GBDriver *driver);
 
 void gbDriverDraw(GBDriver *driver);
+
+void gbDriverSetEventCallback(bool (*Callback)(const SDL_Event *));
 
 int gbDriverPollEvent(GBDriverEvent *event);

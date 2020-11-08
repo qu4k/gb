@@ -460,9 +460,8 @@ void meditDrawContents(GBMemoryEditor *editor, void *mem_data_void,
     p2.x = window_pos.x + s->PosAsciiStart - s->GlyphWidth;
     p2.y = window_pos.y + 9999;
 
-    ImDrawList_AddLine(
-        draw_list, p1, p2,
-        igGetColorU32U32(ImGuiCol_Border), 1.0f);
+    ImDrawList_AddLine(draw_list, p1, p2, igGetColorU32U32(ImGuiCol_Border),
+                       1.0f);
   }
 
   const ImU32 color_text = igGetColorU32U32(ImGuiCol_Text);
@@ -518,9 +517,8 @@ void meditDrawContents(GBMemoryEditor *editor, void *mem_data_void,
         ImVec2 pmax;
         pmax.x = pos.x + highlight_width;
         pmax.y = pos.y + s->LineHeight;
-        ImDrawList_AddRectFilled(
-            draw_list, pos, pmax,
-            editor->HighlightColor, 0.f, 15);
+        ImDrawList_AddRectFilled(draw_list, pos, pmax, editor->HighlightColor,
+                                 0.f, 15);
       }
 
       if (editor->DataEditingAddr == addr) {
@@ -609,9 +607,7 @@ void meditDrawContents(GBMemoryEditor *editor, void *mem_data_void,
       size.x = s->PosAsciiEnd - s->PosAsciiStart;
       size.y = s->LineHeight;
 
-      if (igInvisibleButton(
-              "ascii", size,
-              0)) {
+      if (igInvisibleButton("ascii", size, 0)) {
         editor->DataEditingAddr = editor->DataPreviewAddr =
             addr + (size_t)((igGetIO()->MousePos.x - pos.x) / s->GlyphWidth);
         editor->DataEditingTakeFocus = true;
@@ -622,14 +618,11 @@ void meditDrawContents(GBMemoryEditor *editor, void *mem_data_void,
           ImVec2 pmax;
           pmax.x = pos.x + s->GlyphWidth;
           pmax.y = pos.y + s->LineHeight;
-          ImDrawList_AddRectFilled(
-              draw_list, pos,
-              pmax,
-              igGetColorU32U32(ImGuiCol_FrameBg), 0.f, 15);
-          ImDrawList_AddRectFilled(
-              draw_list, pos,
-              pmax,
-              igGetColorU32U32(ImGuiCol_TextSelectedBg), 0.f, 15);
+          ImDrawList_AddRectFilled(draw_list, pos, pmax,
+                                   igGetColorU32U32(ImGuiCol_FrameBg), 0.f, 15);
+          ImDrawList_AddRectFilled(draw_list, pos, pmax,
+                                   igGetColorU32U32(ImGuiCol_TextSelectedBg),
+                                   0.f, 15);
         }
         unsigned char c =
             editor->ReadFn ? editor->ReadFn(mem_data, addr) : mem_data[addr];

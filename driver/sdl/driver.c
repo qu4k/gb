@@ -1,7 +1,5 @@
 #include "driver.h"
 
-#include "common.h"
-
 int gbDriverInit(void) {
   if (SDL_Init(SDL_INIT_VIDEO) != 0) {
     gbSetError("<<SDL_Init>> %s\n", SDL_GetError());
@@ -35,6 +33,8 @@ GBDriver *gbDriverNew(int width, int height) {
     return NULL;
   }
 
+  SDL_GL_SetSwapInterval(1);
+
   driver->raw = win;
   driver->context = context;
   return driver;
@@ -48,12 +48,20 @@ void gbDriverFree(GBDriver *driver) {
 
 void gbDriverDraw(GBDriver *driver) { SDL_GL_SwapWindow(driver->raw); }
 
+static bool (*DriverCallback)(const SDL_Event *) = NULL;
+
+void gbDriverSetEventCallback(bool (*Callback)(const SDL_Event *)) {
+  DriverCallback = Callback;
+}
+
 int gbDriverPollEvent(GBDriverEvent *event) {
   SDL_Event e;
+  bool found = false;
   while (SDL_PollEvent(&e) != 0) {
+    found = false;
     if (e.type == SDL_QUIT) {
       event->type = GB_DRIVER_QUIT;
-      return 1;
+      found = true;
     }
     if (e.type == SDL_WINDOWEVENT) {
       if (e.window.event == SDL_WINDOWEVENT_RESIZED ||
@@ -61,9 +69,17 @@ int gbDriverPollEvent(GBDriverEvent *event) {
         event->type = GB_DRIVER_RESIZE;
         event->width = e.window.data1;
         event->height = e.window.data2;
-        return 1;
+        found = true;
+      }
+      if (e.window.event == SDL_WINDOWEVENT_CLOSE) {
+        event->type = GB_DRIVER_QUIT;
+        found = true;
       }
     }
+    if (DriverCallback != NULL)
+      DriverCallback(&e);
+    if (found)
+      return true;
   }
   return 0;
 }

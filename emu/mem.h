@@ -10,12 +10,12 @@ const char gbBootRom[0x100];
 typedef unsigned short addr;
 
 typedef struct {
-  byte* rom;
-  byte* ram;
+  byte *rom;
+  byte *ram;
 } GBMemory;
 
-GBMemory* gbMemNew();
-void gbMemFree(GBMemory* mem);
+GBMemory *gbMemNew();
+void gbMemFree(GBMemory *mem);
 
-bool gbMemWrite(GBMemory* mem, addr address, byte value);
-byte* gbMemRead(GBMemory* mem, addr address);
+bool gbMemWrite(GBMemory *mem, addr address, byte value);
+byte *gbMemRead(GBMemory *mem, addr address);

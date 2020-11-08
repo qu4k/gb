@@ -1,7 +1,7 @@
 #include "mem.h"
 
-#include <stdlib.h>
 #include <memory.h>
+#include <stdlib.h>
 
 const char gbBootRom[0x100] = {
     0x31, 0xFE, 0xFF, 0xAF, 0x21, 0xFF, 0x9F, 0x32, 0xCB, 0x7C, 0x20, 0xFB,
@@ -28,8 +28,8 @@ const char gbBootRom[0x100] = {
     0x3E, 0x01, 0xE0, 0x50,
 };
 
-GBMemory* gbMemNew() {
-  GBMemory* mem = malloc(sizeof(GBMemory));
+GBMemory *gbMemNew() {
+  GBMemory *mem = malloc(sizeof(GBMemory));
   mem->rom = malloc(GB_MEM_ROM_SIZE);
   mem->ram = malloc(GB_MEM_RAM_SIZE);
   memset(mem->rom, 0, GB_MEM_ROM_SIZE);
@@ -38,23 +38,27 @@ GBMemory* gbMemNew() {
   return mem;
 }
 
-void gbMemFree(GBMemory* mem) {
+void gbMemFree(GBMemory *mem) {
   free(mem->rom);
   free(mem->ram);
   free(mem);
 }
 
-bool gbMemWrite(GBMemory* mem, addr address, byte value) {
-  byte* ptr = NULL;
-  if (address <= GB_MEM_ROM_SIZE) ptr = &mem->rom[address];
-  else ptr = &mem->ram[address];
+bool gbMemWrite(GBMemory *mem, addr address, byte value) {
+  byte *ptr = NULL;
+  if (address <= GB_MEM_ROM_SIZE)
+    ptr = &mem->rom[address];
+  else
+    ptr = &mem->ram[address];
   *ptr = value;
   return 0;
 }
 
-byte* gbMemRead(GBMemory* mem, addr address) {
-  byte* ptr = NULL;
-  if (address <= GB_MEM_ROM_SIZE) ptr = &mem->rom[address];
-  else ptr = &mem->ram[address];
+byte *gbMemRead(GBMemory *mem, addr address) {
+  byte *ptr = NULL;
+  if (address <= GB_MEM_ROM_SIZE)
+    ptr = &mem->rom[address];
+  else
+    ptr = &mem->ram[address];
   return ptr;
 }
